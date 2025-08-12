@@ -59,3 +59,28 @@ else:
     db = configure_db(db_uri)
 
 #Tool kit
+toolkit = SQLDatabaseToolkit(db=db, llm=llm)
+agent = create_sql_agent(
+    llm=llm,
+    toolkit=toolkit,
+    verbose=True,
+    agent_type=AgentType.ZERO_SHOT_REACT_DESCRIPTION
+)
+
+if "messages" not in st.session_state or st.sidebar.button("Clear message history"):
+    st.session_state["messages"] = [{"role": "asssitant", "content": "How can I help you?"}]
+
+for msg in st.session_state.messages:
+    st.chat_message(msg["role"]).write(msg["content"])
+
+user_query = st.chat_input(placeholder="ask anything from the db")
+
+if user_query:
+    st.session_state.messages.append({"role":"user", "content": user_query})
+    st.chat_message("user").write(user_query)
+
+    with st.chat_message("assistant"):
+        streamlit_callback = StreamlitCallbackHandler(st.container())
+        response = agent.run(user_query, callbacks=[streamlit_callback])
+        st.session_state.messages.append({"role":"assistant", "content": response})
+        st.write(response)
